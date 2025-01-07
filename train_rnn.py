@@ -1,101 +1,125 @@
 import os
 import sqlite3
-import pandas as pd
 import numpy as np
-import pickle
+import pandas as pd
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense
+from sklearn.preprocessing import MinMaxScaler
+from joblib import dump
 
-# Constants
-DB_URL = "https://raw.githubusercontent.com/chiragpalan/stocks_data_management/main/nifty50_data_v1.db"
-# LOCAL_DB = "nifty50_data_v1.db"
+# Paths
+DB_PATH = "nifty50_data_v1.db"
+PREDICTION_DB_PATH = "prediction.db"
 MODELS_DIR = "models"
-PREDICTIONS_DIR = "predictions"
-PREDICTIONS_DB = os.path.join(PREDICTIONS_DIR, "predictions_v1.db")
 
-# Step 1: Download database
-# def download_database():
-#     import requests
-#     response = requests.get(DB_URL)
-#     with open(LOCAL_DB, "wb") as file:
-#         file.write(response.content)
+# Create models directory if it doesn't exist
+os.makedirs(MODELS_DIR, exist_ok=True)
 
-# Step 2: Prepare data
-def prepare_data(df):
-    # Remove duplicates based on Datetime column
-    df = df.drop_duplicates(subset="Datetime")
-    # Sort by Datetime for consistent order
-    df = df.sort_values(by="Datetime")
-    # Normalize features
-    from sklearn.preprocessing import MinMaxScaler
+def get_tables(database_path):
+    """
+    Retrieve table names from the database excluding sqlite_sequence.
+
+    Args:
+        database_path (str): Path to the SQLite database.
+    Returns:
+        list: List of table names.
+    """
+    with sqlite3.connect(database_path) as conn:
+        query = "SELECT name FROM sqlite_master WHERE type='table' AND name!='sqlite_sequence';"
+        tables = pd.read_sql(query, conn)['name'].tolist()
+    return tables
+
+def preprocess_data(data, feature_columns, target_columns, look_back=12):
+    """
+    Prepare the data for time series prediction.
+
+    Args:
+        data (pd.DataFrame): Input data with Datetime and required columns.
+        feature_columns (list): List of feature column names.
+        target_columns (list): List of target column names.
+        look_back (int): Number of past steps to consider for prediction.
+    Returns:
+        tuple: Scaled features and targets as numpy arrays, along with scalers.
+    """
+    # Drop duplicate rows by Datetime
+    data = data[~data.index.duplicated(keep='first')]
+    
     scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(df[["Open", "High", "Low", "Close", "Volume"]])
-    return scaled_data, scaler
+    scaled_data = scaler.fit_transform(data[feature_columns + target_columns])
 
-# Step 3: Create sliding windows for RNN
-def create_sequences(data, input_steps, output_steps):
     X, y = [], []
-    for i in range(len(data) - input_steps - output_steps):
-        X.append(data[i : i + input_steps])
-        y.append(data[i + input_steps : i + input_steps + output_steps])
-    return np.array(X), np.array(y)
+    for i in range(len(scaled_data) - look_back):
+        X.append(scaled_data[i:i + look_back, :len(feature_columns)])
+        y.append(scaled_data[i + look_back, len(feature_columns):])
+    return np.array(X), np.array(y), scaler
 
-# Step 4: Build and train RNN model
-def build_rnn_model(input_shape, output_size):
+def train_rnn_model(X_train, y_train, input_shape):
+    """
+    Train an enhanced RNN model on the given data.
+
+    Args:
+        X_train (np.ndarray): Training features.
+        y_train (np.ndarray): Training targets.
+        input_shape (tuple): Shape of the input data.
+    Returns:
+        keras.Model: Trained RNN model.
+    """
     model = Sequential([
-        LSTM(64, input_shape=input_shape, return_sequences=True),
-        Dropout(0.2),
-        LSTM(64, return_sequences=False),
-        Dropout(0.2),
-        Dense(output_size)
+        LSTM(50, activation='relu', return_sequences=True, input_shape=input_shape),
+        LSTM(50, activation='relu'),
+        Dense(25, activation='relu'),
+        Dense(y_train.shape[1])  # Output layer matches target columns
     ])
-    model.compile(optimizer="adam", loss="mse")
+    model.compile(optimizer='adam', loss='mse')
+    model.fit(X_train, y_train, epochs=15, batch_size=32, verbose=1)
     return model
 
-# Step 5: Train models and save outputs
-def train_and_save_models():
-    # Create directories for outputs
-    os.makedirs(MODELS_DIR, exist_ok=True)
-    os.makedirs(PREDICTIONS_DIR, exist_ok=True)
+def main():
+    """
+    Main function to train RNN models and store predictions.
+    """
+    tables = get_tables(DB_PATH)
+    feature_columns = ["Open", "High", "Low", "Close", "Volume"]
+    target_columns = ["Open", "High", "Low", "Close", "Volume"]
+    look_back = 12  # 12 steps back (5 mins each = 60 mins)
 
-    # Connect to database
-    conn = sqlite3.connect(LOCAL_DB)
-    predictions_conn = sqlite3.connect(PREDICTIONS_DB)
+    with sqlite3.connect(DB_PATH) as conn, sqlite3.connect(PREDICTION_DB_PATH) as pred_conn:
+        for table in tables:
+            print(f"Processing table: {table}")
+            data = pd.read_sql(f"SELECT * FROM {table}", conn, parse_dates=["Datetime"])
+            data.set_index("Datetime", inplace=True)
 
-    # Loop through each table in the database
-    for table in pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)["name"]:
-        print(f"Processing table: {table}")
-        
-        # Load and prepare data
-        df = pd.read_sql(f"SELECT * FROM {table}", conn)
-        data, scaler = prepare_data(df)
-        
-        # Create input and output sequences
-        input_steps, output_steps = 24, 12
-        X, y = create_sequences(data, input_steps, output_steps)
-        y = y.reshape(y.shape[0], -1)  # Flatten output
-        
-        # Train the RNN model
-        model = build_rnn_model(X.shape[1:], y.shape[1])
-        model.fit(X, y, epochs=50, batch_size=32, verbose=1)
-        
-        # Save the model and scaler
-        model_path = os.path.join(MODELS_DIR, f"{table}_rnn_model.h5")
-        scaler_path = os.path.join(MODELS_DIR, f"{table}_scaler.pkl")
-        model.save(model_path)
-        with open(scaler_path, "wb") as f:
-            pickle.dump(scaler, f)
+            # Prepare train-test split
+            train_size = int(len(data) * 0.8)
+            train_data, test_data = data[:train_size], data[train_size:]
 
-        # Save predictions to the database
-        predictions = model.predict(X)
-        predictions_df = pd.DataFrame(predictions.reshape(-1, 12, 5).mean(axis=1), columns=["Open", "High", "Low", "Close", "Volume"])
-        predictions_df["Datetime"] = df["Datetime"].iloc[input_steps : input_steps + len(predictions)].values
-        predictions_df.to_sql(f"{table}_predictions", predictions_conn, if_exists="replace", index=False)
+            # Preprocess data
+            X_train, y_train, scaler = preprocess_data(train_data, feature_columns, target_columns, look_back)
+            X_test, y_test, _ = preprocess_data(test_data, feature_columns, target_columns, look_back)
 
-    conn.close()
-    predictions_conn.close()
+            # Train model
+            model = train_rnn_model(X_train, y_train, X_train.shape[1:])
 
-# Main execution
+            # Save model and scaler
+            model.save(os.path.join(MODELS_DIR, f"{table}_model.h5"))
+            dump(scaler, os.path.join(MODELS_DIR, f"{table}_scaler.joblib"))
+
+            # Make predictions
+            predictions = model.predict(X_test)
+            predictions = scaler.inverse_transform(np.hstack((np.zeros_like(predictions), predictions)))[:, len(feature_columns):]
+            true_values = scaler.inverse_transform(np.hstack((np.zeros_like(y_test), y_test)))[:, len(feature_columns):]
+
+            # Align predictions with Datetime index
+            datetime_index = test_data.index[look_back:].to_list()
+            result_df = pd.DataFrame({
+                "Datetime": datetime_index,
+                **{f"Pred_{col}": predictions[:, idx] for idx, col in enumerate(target_columns)},
+                **{f"True_{col}": true_values[:, idx] for idx, col in enumerate(target_columns)}
+            })
+
+            # Save predictions to database
+            result_df.to_sql(table, pred_conn, if_exists="replace", index=False)
+            print(f"Finished processing table: {table}")
+
 if __name__ == "__main__":
-    download_database()
-    train_and_save_models()
+    main()
