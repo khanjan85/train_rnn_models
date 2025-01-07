@@ -26,10 +26,10 @@ jobs:
     - name: Run Fetch Database Script
       run: python fetch_db.py
 
-    - name: Verify Database Fetch
+    - name: Add Database to Repository
       run: |
-        if [ -f "nifty50_data_v1.db" ]; then
-          echo "Database fetched successfully!"
-        else
-          echo "Database fetch failed!" && exit 1
-        fi
+        git config --local user.name "GitHub Actions"
+        git config --local user.email "actions@github.com"
+        git add nifty50_data_v1.db
+        git commit -m "Add nifty50_data_v1.db to repository"
+        git push
