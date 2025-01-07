@@ -8,17 +8,17 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 
 # Constants
 DB_URL = "https://raw.githubusercontent.com/chiragpalan/stocks_data_management/main/nifty50_data_v1.db"
-LOCAL_DB = "nifty50_data_v1.db"
+# LOCAL_DB = "nifty50_data_v1.db"
 MODELS_DIR = "models"
 PREDICTIONS_DIR = "predictions"
 PREDICTIONS_DB = os.path.join(PREDICTIONS_DIR, "predictions_v1.db")
 
 # Step 1: Download database
-def download_database():
-    import requests
-    response = requests.get(DB_URL)
-    with open(LOCAL_DB, "wb") as file:
-        file.write(response.content)
+# def download_database():
+#     import requests
+#     response = requests.get(DB_URL)
+#     with open(LOCAL_DB, "wb") as file:
+#         file.write(response.content)
 
 # Step 2: Prepare data
 def prepare_data(df):
