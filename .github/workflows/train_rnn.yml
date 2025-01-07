@@ -1,38 +1,36 @@
 name: Train RNN Models
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  train:
+  train-models:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
+    - name: Checkout train_rnn_models repository
       uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.9"
+        python-version: 3.9
 
-    - name: Install Dependencies
+    - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip
+        pip install tensorflow pandas numpy scikit-learn
 
-    - name: Fetch Database
-      run: python fetch_db.py
-
-    - name: Train Models
+    - name: Run RNN training script
       run: python train_rnn.py
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: models-and-predictions
-        path: |
-          models/
-          prediction.db
+    - name: Push results to train_rnn_models
+      run: |
+        git config --local user.name "GitHub Actions"
+        git config --local user.email "actions@github.com"
+        git add models/ predictions/
+        git commit -m "Add trained models and predictions"
+        git push
