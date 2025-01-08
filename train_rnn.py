@@ -61,7 +61,7 @@ def train_model(table_name):
     if os.path.exists(file_path):
         print("removing files")
         os.remove(file_path)
-         
+        os.sync()
     print("model path", model_path)
     if os.path.exists(model_path):
         print("removing models")
