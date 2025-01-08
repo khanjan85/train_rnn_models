@@ -56,7 +56,10 @@ def train_model(table_name):
     model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.2)
 
     # Save model and scaler
-    model.save(f"{MODELS_FOLDER}/{table_name}_model.h5")
+    model_path = f"{MODELS_FOLDER}/{table_name}_model.h5"
+    if os.path.exists(model_path):
+        os.remove(model_path)
+    model.save(model_path)
     file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
     print(f"Saving scaler to: {file_path}")
     if os.path.exists(file_path):
