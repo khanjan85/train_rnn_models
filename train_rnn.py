@@ -57,18 +57,23 @@ def train_model(table_name):
 
     # Save model and scaler
     model_path = f"{MODELS_FOLDER}/{table_name}_model.h5"
+    file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
     print("model path", model_path)
     if os.path.exists(model_path):
-        os.remove(model_path)
-    model.save(model_path)
-    file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
+        print("removing models")
+        os.remove(model_path) 
     print(f"Saving scaler to: {file_path}")
     if os.path.exists(file_path):
+        print("removing files")
         os.remove(file_path)
+        
     print(f"Existing file {file_path} deleted.")
+
+    model.save(model_path)
+    print(f"Model for {table_name} saved.")
     with open(file_path, "wb") as f:
         pickle.dump(scaler, f)
-    print(f"Model for {table_name} saved.")
+    
 
 # List all tables
 conn = sqlite3.connect(DATABASE_PATH)
