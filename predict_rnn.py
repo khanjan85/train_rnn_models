@@ -1,57 +1,53 @@
 import os
 import sqlite3
 import pandas as pd
-import numpy as np
-from tensorflow.keras.models import load_model
-import pickle
+import tensorflow as tf
 
 DATABASE_PATH = "nifty50_data_v1.db"
-PREDICTIONS_DB = "predictions.db"
+PREDICTIONS_DB = "predictions/predictions.db"  # Ensure a directory path is included
 MODELS_FOLDER = "models"
+
+# Ensure the folder for PREDICTIONS_DB exists
 os.makedirs(os.path.dirname(PREDICTIONS_DB), exist_ok=True)
 
-def predict_table(table_name):
-    # Load model and scaler
-    model = load_model(f"{MODELS_FOLDER}/{table_name}_model.h5")
-    with open(f"{MODELS_FOLDER}/{table_name}_scaler.pkl", "rb") as f:
-        scaler = pickle.load(f)
+# Connect to the database
+conn = sqlite3.connect(DATABASE_PATH)
+cursor = conn.cursor()
+
+# Load trained models and make predictions for each table
+for table_name in cursor.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall():
+    table_name = table_name[0]
+
+    if table_name == "sqlite_sequence":
+        continue
 
     # Load data
-    conn = sqlite3.connect(DATABASE_PATH)
-    data = pd.read_sql(f"SELECT * FROM {table_name}", conn)
-    conn.close()
-    data = data[['Open', 'High', 'Low', 'Close', 'Volume']].dropna()
+    query = f"SELECT * FROM {table_name}"
+    data = pd.read_sql(query, conn)
 
-    # Prepare input
-    test_data = scaler.transform(data)
-    X_test = []
-    for i in range(12, len(test_data)):
-        X_test.append(test_data[i-12:i])
-    X_test = np.array(X_test)
+    # Preprocess data
+    features = ["Open", "High", "Low", "Close", "Volume", "Adj_Close"]
+    data = data[features]
 
-    # Predict
+    # Load model
+    model_path = os.path.join(MODELS_FOLDER, f"{table_name}_rnn_model.h5")
+    if not os.path.exists(model_path):
+        print(f"Model for table {table_name} not found. Skipping...")
+        continue
+
+    model = tf.keras.models.load_model(model_path)
+
+    # Make predictions
+    X_test = data[-12:].values.reshape(1, 12, len(features))  # Last 12 steps for prediction
     predictions = model.predict(X_test)
-    predictions = scaler.inverse_transform(predictions)
 
-    # Save predictions
-    prediction_df = pd.DataFrame(predictions, columns=['Open', 'High', 'Low', 'Close', 'Volume'])
-    prediction_df['Datetime'] = data['Datetime'].iloc[12:].values
-    prediction_df['Actual_Open'] = data['Open'].iloc[12:].values
-    prediction_df['Actual_High'] = data['High'].iloc[12:].values
-    prediction_df['Actual_Low'] = data['Low'].iloc[12:].values
-    prediction_df['Actual_Close'] = data['Close'].iloc[12:].values
-    prediction_df['Actual_Volume'] = data['Volume'].iloc[12:].values
+    # Save predictions to a new database
+    predictions_df = pd.DataFrame(predictions, columns=features)
+    predictions_df["Datetime"] = data["Datetime"].iloc[-12:].values
+    predictions_df["Actual"] = data.iloc[-12:][features].values.tolist()
 
-    conn = sqlite3.connect(PREDICTIONS_DB)
-    prediction_df.to_sql(table_name, conn, if_exists='replace', index=False)
-    conn.close()
-    print(f"Predictions saved for table: {table_name}")
+    predictions_conn = sqlite3.connect(PREDICTIONS_DB)
+    predictions_df.to_sql(table_name, predictions_conn, if_exists="replace", index=False)
+    predictions_conn.close()
 
-# Predict for all tables
-conn = sqlite3.connect(DATABASE_PATH)
-tables = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn)
 conn.close()
-
-for table in tables['name']:
-    if table != 'sqlite_sequence':
-        predict_table(table)
