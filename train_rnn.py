@@ -6,7 +6,7 @@ import pickle
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
-
+os.sync()
 # Connect to the database
 DATABASE_PATH = "nifty50_data_v1.db"
 MODELS_FOLDER = "models"
