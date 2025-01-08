@@ -57,7 +57,9 @@ def train_model(table_name):
 
     # Save model and scaler
     model.save(f"{MODELS_FOLDER}/{table_name}_model.h5")
-    with open(f"{MODELS_FOLDER}/{table_name}_scaler.pkl", "wb") as f:
+    file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
+    print(f"Saving scaler to: {file_path}")
+    with open(file_path, "wb") as f:
         pickle.dump(scaler, f)
     print(f"Model for {table_name} saved.")
 
