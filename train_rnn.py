@@ -59,6 +59,9 @@ def train_model(table_name):
     model.save(f"{MODELS_FOLDER}/{table_name}_model.h5")
     file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
     print(f"Saving scaler to: {file_path}")
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    print(f"Existing file {file_path} deleted.")
     with open(file_path, "wb") as f:
         pickle.dump(scaler, f)
     print(f"Model for {table_name} saved.")
