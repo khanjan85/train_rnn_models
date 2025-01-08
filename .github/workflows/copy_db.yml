@@ -1,0 +1,32 @@
+name: Copy Database from stocks_data_management
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight (adjust as needed)
+  workflow_dispatch:
+
+jobs:
+  copy-database:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout train_rnn_models repository
+      uses: actions/checkout@v3
+
+    - name: Clone stocks_data_management repository
+      run: |
+        git clone https://github.com/chiragpalan/stocks_data_management.git stocks_repo
+
+    - name: Copy Database File
+      run: |
+        cp stocks_repo/nifty50_data_v1.db .
+
+    - name: Commit and Push Database File
+      env:
+        GH_PAT: ${{ secrets.GH_PAT }}
+      run: |
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        git add nifty50_data_v1.db
+        git commit -m "Update database file from stocks_data_management"
+        git push https://x-access-token:${GH_PAT}@github.com/chiragpalan/train_rnn_models.git
