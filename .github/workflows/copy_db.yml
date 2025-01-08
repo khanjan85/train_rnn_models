@@ -2,7 +2,7 @@ name: Copy Database from stocks_data_management
 
 on:
   schedule:
-    - cron: '0 0 * * *' # Runs daily at midnight (adjust as needed)
+    - cron: '30 11 * * 1-5' # Runs daily at midnight (adjust as needed)
   workflow_dispatch:
 
 jobs:
