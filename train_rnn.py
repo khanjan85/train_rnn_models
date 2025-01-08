@@ -62,16 +62,14 @@ def train_model(table_name):
     if os.path.exists(model_path):
         print("removing models")
         os.remove(model_path) 
-    print(f"Saving scaler to: {file_path}")
+    
     if os.path.exists(file_path):
         print("removing files")
         os.remove(file_path)
         
-    print(f"Existing file {file_path} deleted.")
-
     model.save(model_path)
-    print(f"Model for {table_name} saved.")
     with open(file_path, "wb") as f:
+        print("saving scalar")
         pickle.dump(scaler, f)
     
 
