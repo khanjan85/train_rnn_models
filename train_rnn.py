@@ -58,15 +58,15 @@ def train_model(table_name):
     # Save model and scaler
     model_path = f"{MODELS_FOLDER}/{table_name}_model.h5"
     file_path = f"{MODELS_FOLDER}/{table_name}_scaler.pkl"
+     if os.path.exists(file_path):
+        print("removing files")
+        os.remove(file_path)
+         
     print("model path", model_path)
     if os.path.exists(model_path):
         print("removing models")
-        os.remove(model_path) 
-    
-    if os.path.exists(file_path):
-        print("removing files")
-        os.remove(file_path)
-        
+        os.remove(model_path)   
+   
     model.save(model_path)
     with open(file_path, "wb") as f:
         print("saving scalar")
