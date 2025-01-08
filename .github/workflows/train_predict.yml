@@ -3,7 +3,7 @@ name: Train and Predict RNN Models
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *' # Run every 6 hours
+    - cron: '30 16 * * 1-5' # Run every 6 hours
 
 jobs:
   train:
