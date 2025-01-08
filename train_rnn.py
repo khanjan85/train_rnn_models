@@ -65,12 +65,9 @@ def train_model(table_name):
         os.remove(model_path)   
    
     model.save(model_path)
-    with open(file_path, "wb") as f:        
-        if os.path.exists(file_path):
-            print("removing files")
-            os.remove(file_path)
-            print("saving scalar")
-            pickle.dump(scaler, f)
+    with open(file_path, "wb") as f: 
+        print("saving scalar")
+        pickle.dump(scaler, f)
     
 
 # List all tables
