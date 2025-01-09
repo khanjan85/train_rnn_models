@@ -33,7 +33,7 @@ jobs:
           git status | echo "git status"
           git commit -m "Add trained models and related artifacts" || echo "Nothing to commit."
           git status | echo "git status"
-          git push -f || echo "Nothing to push."
+          git push -f main || echo "Nothing to push."
 
   predict:
     runs-on: ubuntu-latest
@@ -63,4 +63,4 @@ jobs:
           git status | echo "git status"
           git commit -m "Add prediction results" || echo "Nothing to commit."
           git status | echo "git status"
-          git push -f || echo "Nothing to push."
+          git push -f main || echo "Nothing to push."
