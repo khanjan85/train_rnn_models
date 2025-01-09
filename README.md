@@ -1,4 +1,5 @@
 # train_rnn_models
+#test
 This repo trains RNN models on stock data
 
 # Train RNN Models
