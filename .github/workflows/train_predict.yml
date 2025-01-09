@@ -17,6 +17,11 @@ jobs:
         with:
           python-version: '3.9'
 
+      - name: Run training script
+        run: |
+           cd models
+           ls -alh
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -24,6 +29,10 @@ jobs:
 
       - name: Run training script
         run: python train_rnn.py
+      - name: Run training script
+        run: |
+           cd models
+           ls -alh
 
       - name: Commit and push trained models
         run: |
