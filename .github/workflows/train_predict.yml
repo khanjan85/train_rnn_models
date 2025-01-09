@@ -24,6 +24,12 @@ jobs:
 
       - name: Run training script
         run: python train_rnn.py
+        
+      - name: Update khanjan file
+        run: |
+          cd models
+          echo hello $date >> khanjan
+
 
       - name: Commit and push trained models
         run: |
