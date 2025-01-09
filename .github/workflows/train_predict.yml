@@ -16,12 +16,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
-      - name: Run training script
-        run: |
-           cd models
-           ls -alh
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -29,16 +24,13 @@ jobs:
 
       - name: Run training script
         run: python train_rnn.py
-      - name: Run training script
-        run: |
-           cd models
-           ls -alh
 
       - name: Commit and push trained models
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add . || echo "No models folder found."
+          git status | echo "git status"
+          git add -f models || echo "No models folder found."
           git commit -m "Add trained models and related artifacts" || echo "Nothing to commit."
           git push || echo "Nothing to push."
 
@@ -66,6 +58,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add . || echo "No predictions folder found."
+          git add -f models || echo "No predictions folder found."
           git commit -m "Add prediction results" || echo "Nothing to commit."
           git push || echo "Nothing to push."
